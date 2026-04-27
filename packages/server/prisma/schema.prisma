@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id           String    @id
+  hostDeviceId String
+  config       String
+  state        String
+  createdAt    DateTime  @default(now())
+  endedAt      DateTime?
+}
+
+model HandHistory {
+  id         String   @id @default(cuid())
+  roomId     String
+  handNumber Int
+  data       String
+  playedAt   DateTime @default(now())
+}
+
+model BannedDevice {
+  roomId   String
+  deviceId String
+
+  @@id([roomId, deviceId])
+}

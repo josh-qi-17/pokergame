@@ -1,0 +1,18 @@
+[Unit]
+Description=Poker Game Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/poker-game
+ExecStart=/usr/bin/node packages/server/dist/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=DATABASE_URL=file:/opt/poker-game/data/prod.db
+EnvironmentFile=-/opt/poker-game/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+每次发现新的问题时将问题记录在TroubleShootList.md中，防止以记录问题被再次引入

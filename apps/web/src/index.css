@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+    font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+  }
+}
+
+@layer components {
+  .card-face {
+    @apply bg-white rounded-lg shadow-lg border border-slate-200;
+  }
+
+  .card-back {
+    @apply bg-gradient-to-br from-blue-900 to-blue-700 rounded-lg shadow-lg;
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgba(255,255,255,0.05) 4px,
+      rgba(255,255,255,0.05) 8px
+    );
+  }
+
+  .chip-stack {
+    @apply relative inline-flex flex-col items-center;
+  }
+
+  .action-btn {
+    @apply px-4 py-2 rounded-lg font-semibold transition-all duration-150 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+}
