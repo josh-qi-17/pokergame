@@ -20,8 +20,8 @@ function getSeatPositions(totalSeats: number): { x: number; y: number }[] {
   for (let i = 0; i < totalSeats; i++) {
     // i=0 是底部，逆时针分布
     const angle = Math.PI / 2 + (i * 2 * Math.PI) / totalSeats
-    const x = 50 + 44 * Math.cos(angle)
-    const y = 50 + 38 * Math.sin(angle)
+    const x = 50 + 41 * Math.cos(angle)
+    const y = 50 + 35 * Math.sin(angle)
     positions.push({ x, y })
   }
   return positions
@@ -50,7 +50,7 @@ export default function Table({ roomState, myPlayerId, myHoleCards, isHost, onSt
   const positions = getSeatPositions(totalSlots)
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: '90%', maxWidth: '480px', margin: '0 auto' }}>
+    <div className="relative w-full overflow-visible" style={{ paddingBottom: '90%', maxWidth: '480px', margin: '0 auto' }}>
       {/* 椭圆牌桌 */}
       <div
         className="absolute inset-4 rounded-[50%] border-4 border-yellow-800/60 shadow-2xl"

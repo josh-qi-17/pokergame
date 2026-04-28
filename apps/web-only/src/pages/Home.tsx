@@ -146,7 +146,7 @@ function JoinRoom({ onBack }: { onBack: () => void }) {
     setLoading(true)
     setError('')
     try {
-      await connectToHost(roomCode.trim().toUpperCase(), nickname.trim())
+      await connectToHost(roomCode.trim(), nickname.trim())
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '加入失败')
     } finally {
@@ -174,8 +174,10 @@ function JoinRoom({ onBack }: { onBack: () => void }) {
         <FormField label="房间码">
           <input
             value={roomCode}
-            onChange={e => setRoomCode(e.target.value.toUpperCase())}
-            placeholder="6位房间码"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            onChange={e => setRoomCode(e.target.value.replace(/\D/g, ''))}
+            placeholder="6位数字房间码"
             maxLength={6}
             className="input-field tracking-widest text-center text-lg font-bold"
           />

@@ -70,7 +70,7 @@ export default function ActionBar({
 
   return (
     <>
-      <div className="bg-slate-900/95 backdrop-blur border-t border-slate-700 p-3 safe-area-bottom">
+      <div className="bg-slate-900/95 backdrop-blur border-t border-slate-700 p-3 safe-bottom">
         <TimerBar timeoutAt={timeoutAt} totalSec={timeoutSec} />
 
         <div className="flex gap-2 mt-3">

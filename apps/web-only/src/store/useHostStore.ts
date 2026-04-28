@@ -184,7 +184,9 @@ export const useHostStore = create<HostState>((set, get) => ({
 
   createRoom(nickname, config) {
     const myPlayerId = nanoid(8)
-    const roomId = nanoid(6).toUpperCase()
+    const arr = new Uint32Array(1)
+    crypto.getRandomValues(arr)
+    const roomId = String(100000 + (arr[0]! % 900000))
     const hostSeat: SeatInfo = {
       seatIndex: 0,
       playerId: myPlayerId,

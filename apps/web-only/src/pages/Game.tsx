@@ -81,7 +81,7 @@ function HostGame() {
   const mySeat = seats.find(s => s.playerId === myPlayerId)
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-900 overflow-hidden safe-top">
       {/* 游戏桌面区域 */}
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-4 px-2 pb-2">
         <Table
@@ -118,7 +118,7 @@ function HostGame() {
 
       {/* 非行动状态底栏 */}
       {!isMyTurn && !isWaiting && (
-        <div className="bg-slate-900/95 backdrop-blur border-t border-slate-700 p-3 text-center text-slate-400 text-sm">
+        <div className="bg-slate-900/95 backdrop-blur border-t border-slate-700 p-3 safe-bottom text-center text-slate-400 text-sm">
           {isShowdownOver ? '手牌结束 — 在控制台点击「开始下一手」' : '等待其他玩家行动...'}
         </div>
       )}
@@ -197,7 +197,7 @@ function ClientGame() {
   }, [])
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-900 overflow-hidden safe-top">
       {/* 游戏桌面 */}
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-4 px-2 pb-2">
         <Table
@@ -234,7 +234,7 @@ function ClientGame() {
 
       {/* 非行动底栏 */}
       {!isMyTurn && (
-        <div className="bg-slate-900/95 backdrop-blur border-t border-slate-700 p-3 text-center text-slate-400 text-sm">
+        <div className="bg-slate-900/95 backdrop-blur border-t border-slate-700 p-3 safe-bottom text-center text-slate-400 text-sm">
           {isWaiting
             ? '等待房主开始游戏...'
             : isShowdownOver

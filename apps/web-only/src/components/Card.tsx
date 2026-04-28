@@ -2,10 +2,10 @@ import type { Card as CardType } from '../engine/types'
 
 const SUIT_SYMBOLS: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
 const SUIT_COLORS: Record<string, string> = {
-  s: 'text-slate-100',
-  h: 'text-red-400',
-  d: 'text-red-400',
-  c: 'text-slate-100',
+  s: 'text-slate-900',
+  h: 'text-red-500',
+  d: 'text-red-500',
+  c: 'text-slate-900',
 }
 
 function rankLabel(rank: number): string {
