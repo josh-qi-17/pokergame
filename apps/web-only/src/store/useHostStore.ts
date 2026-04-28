@@ -40,6 +40,7 @@ interface HostState {
   // 计时器
   timeoutAt: number | null
   timerRef: ReturnType<typeof setTimeout> | null
+  pausedRemainingMs: number | null
   // 行动去重
   processedActionIds: Set<string>
   // 宿主自己的 playerId
@@ -60,6 +61,7 @@ interface HostState {
   getRoomStateFor: (peerId: string | null) => RoomStatePayload
   clearTimer: () => void
   scheduleTimeout: () => void
+  scheduleTimeoutWithMs: (ms: number) => void
 }
 
 function computeWinners(handState: HandState, seats: SeatInfo[]): WinnerInfo[] {
@@ -178,6 +180,7 @@ export const useHostStore = create<HostState>((set, get) => ({
   dealerSeat: 0,
   timeoutAt: null,
   timerRef: null,
+  pausedRemainingMs: null,
   processedActionIds: new Set(),
   myPlayerId: '',
   myNickname: '',
@@ -363,12 +366,16 @@ export const useHostStore = create<HostState>((set, get) => ({
   },
 
   scheduleTimeout() {
-    const { config, handState, isPaused } = get()
+    const { config } = get()
+    get().scheduleTimeoutWithMs(config.timeoutSec * 1000)
+  },
+
+  scheduleTimeoutWithMs(ms: number) {
+    const { handState, isPaused } = get()
     if (!handState || handState.isFinished || isPaused) return
 
     get().clearTimer()
-    const timeoutMs = config.timeoutSec * 1000
-    const timeoutAt = Date.now() + timeoutMs
+    const timeoutAt = Date.now() + ms
     set({ timeoutAt })
 
     const timer = setTimeout(() => {
@@ -384,17 +391,14 @@ export const useHostStore = create<HostState>((set, get) => ({
       const newTimeoutCount = seat.timeoutCount + 1
 
       if (newTimeoutCount >= 2) {
-        // 第2次超时：sit-out
         set(s => ({
           seats: s.seats.map(se =>
             se.playerId === currentPlayer.playerId ? { ...se, timeoutCount: newTimeoutCount } : se
           ),
         }))
-        // fold 并标记 sitout
         const legal = legalActions(state.handState, currentPlayer.playerId)
         const canCheck = legal.some(l => l.type === 'check')
         get().applyPlayerAction(currentPlayer.playerId, canCheck ? 'check' : 'fold')
-        // 标记为 sitout（后续手牌跳过）
         set(s => ({
           seats: s.seats.map(se =>
             se.playerId === currentPlayer.playerId ? { ...se, chips: 0, timeoutCount: 0 } : se
@@ -410,7 +414,7 @@ export const useHostStore = create<HostState>((set, get) => ({
         const canCheck = legal.some(l => l.type === 'check')
         get().applyPlayerAction(currentPlayer.playerId, canCheck ? 'check' : 'fold')
       }
-    }, timeoutMs)
+    }, ms)
 
     set({ timerRef: timer })
   },
@@ -424,13 +428,17 @@ export const useHostStore = create<HostState>((set, get) => ({
   },
 
   pauseGame() {
+    const { timeoutAt } = get()
+    const remaining = timeoutAt ? Math.max(0, timeoutAt - Date.now()) : null
     get().clearTimer()
-    set({ isPaused: true })
+    set({ isPaused: true, pausedRemainingMs: remaining })
   },
 
   resumeGame() {
-    set({ isPaused: false })
-    get().scheduleTimeout()
+    const { pausedRemainingMs, config } = get()
+    const remainingMs = pausedRemainingMs ?? config.timeoutSec * 1000
+    set({ isPaused: false, pausedRemainingMs: null })
+    get().scheduleTimeoutWithMs(remainingMs)
   },
 
   kickPlayer(peerId) {

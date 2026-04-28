@@ -143,6 +143,11 @@ export default {
 - 多玩家多档位 all-in 产生的嵌套边池
 - 最小加注规则（raise 差额不得小于上一次 raise 差额）
 - 全员 all-in 后自动发完剩余公共牌
+- Heads-Up（2人局）：Dealer = SB，非 Dealer = BB，翻前 SB/Dealer 先行动
+- 每条街发公共牌前需先 burn（丢弃）一张牌
+- 暂停后恢复游戏应使用暂停前剩余的倒计时，而非重置完整时间
+
+**参考规则文档**：`PokerRule.md`（完整德州扑克规则英文版）
 
 ---
 

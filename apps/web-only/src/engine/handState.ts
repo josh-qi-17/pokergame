@@ -22,6 +22,7 @@ export interface HandState {
   sbSeat: number
   bbSeat: number
   currentPlayerIndex: number
+  playersToAct: string[]
   lastRaiserIndex: number
   lastRaiseAmount: number
   minRaise: number
@@ -116,12 +117,14 @@ export function applyAction(state: HandState, playerId: string, action: GameActi
     case 'fold': {
       newPlayer.status = 'folded'
       newActions.push({ playerId, type: 'fold', street: state.street })
-      return advanceTurn({ ...state, players: newPlayers, actions: newActions })
+      const newPlayersToAct = state.playersToAct.filter(id => id !== playerId)
+      return advanceTurn({ ...state, players: newPlayers, playersToAct: newPlayersToAct, actions: newActions })
     }
     case 'check': {
       if (toCall !== 0) throw new Error('Cannot check, must call')
       newActions.push({ playerId, type: 'check', street: state.street })
-      return advanceTurn({ ...state, players: newPlayers, actions: newActions })
+      const newPlayersToAct = state.playersToAct.filter(id => id !== playerId)
+      return advanceTurn({ ...state, players: newPlayers, playersToAct: newPlayersToAct, actions: newActions })
     }
     case 'call': {
       const callAmount = Math.min(toCall, newPlayer.chips)
@@ -130,7 +133,8 @@ export function applyAction(state: HandState, playerId: string, action: GameActi
       newPlayer.totalContributed += callAmount
       if (newPlayer.chips === 0) newPlayer.status = 'allin'
       newActions.push({ playerId, type: 'call', amount: callAmount, street: state.street })
-      return advanceTurn({ ...state, players: newPlayers, actions: newActions })
+      const newPlayersToAct = state.playersToAct.filter(id => id !== playerId)
+      return advanceTurn({ ...state, players: newPlayers, playersToAct: newPlayersToAct, actions: newActions })
     }
     case 'raise': {
       if (action.amount === undefined) throw new Error('Raise amount required')
@@ -143,9 +147,13 @@ export function applyAction(state: HandState, playerId: string, action: GameActi
       newPlayer.totalContributed += raiseTotal
       if (newPlayer.chips === 0) newPlayer.status = 'allin'
       newActions.push({ playerId, type: 'raise', amount: raiseTotal, street: state.street })
+      const newPlayersToAct = newPlayers
+        .filter(p => p.status === 'active' && p.playerId !== playerId)
+        .map(p => p.playerId)
       return advanceTurn({
         ...state,
         players: newPlayers,
+        playersToAct: newPlayersToAct,
         lastRaiserIndex: playerIdx,
         lastRaiseAmount: raiseIncrement,
         minRaise: raiseIncrement,
@@ -164,9 +172,14 @@ export function applyAction(state: HandState, playerId: string, action: GameActi
       if (newTotalBet > maxBet) {
         const raiseIncrement = newTotalBet - maxBet
         if (raiseIncrement >= state.minRaise) {
+          // Full raise: reset playersToAct to all active players except this one
+          const newPlayersToAct = newPlayers
+            .filter(p => p.status === 'active' && p.playerId !== playerId)
+            .map(p => p.playerId)
           return advanceTurn({
             ...state,
             players: newPlayers,
+            playersToAct: newPlayersToAct,
             lastRaiserIndex: playerIdx,
             lastRaiseAmount: raiseIncrement,
             minRaise: raiseIncrement,
@@ -175,14 +188,25 @@ export function applyAction(state: HandState, playerId: string, action: GameActi
           })
         }
       }
-      return advanceTurn({ ...state, players: newPlayers, actions: newActions })
+      // Short all-in (not reopening) or pure call all-in: just remove self
+      const newPlayersToAct = state.playersToAct.filter(id => id !== playerId)
+      return advanceTurn({ ...state, players: newPlayers, playersToAct: newPlayersToAct, actions: newActions })
     }
   }
 }
 
 function advanceTurn(state: HandState): HandState {
   const nonFolded = state.players.filter(p => p.status !== 'folded' && p.status !== 'sitout')
-  if (nonFolded.length === 1) return collectPots({ ...state, isFinished: true })
+  if (nonFolded.length === 1) {
+    const finalPots = calculateSidePots(
+      state.players.map(p => ({
+        playerId: p.playerId,
+        contributed: p.totalContributed,
+        folded: p.status === 'folded',
+      }))
+    )
+    return collectPots({ ...state, pots: finalPots, isFinished: true })
+  }
   if (isStreetComplete(state)) return advanceStreet(state)
   const nextIdx = findNextActivePlayer(state)
   if (nextIdx === -1) return advanceStreet(state)
@@ -196,14 +220,7 @@ function isStreetComplete(state: HandState): boolean {
   const allMatchedOrAllin = state.players
     .filter(p => p.status !== 'folded' && p.status !== 'sitout')
     .every(p => p.status === 'allin' || p.currentStreetBet === maxBet)
-  if (!allMatchedOrAllin) return false
-  if (state.lastRaiserIndex < 0) return true
-  const currentIdx = state.currentPlayerIndex
-  if (!state.lastRaiserActedVoluntarily) {
-    return currentIdx === state.lastRaiserIndex
-  }
-  const nextIdx = findNextActivePlayer(state)
-  return nextIdx === state.lastRaiserIndex || nextIdx === -1
+  return allMatchedOrAllin && state.playersToAct.length === 0
 }
 
 function findNextActivePlayer(state: HandState): number {
@@ -222,7 +239,7 @@ function findNextActivePlayerFrom(state: HandState, fromIdx: number): number {
 }
 
 function advanceStreet(state: HandState): HandState {
-  const nonFolded = state.players.filter(p => p.status !== 'folded')
+  const nonFolded = state.players.filter(p => p.status !== 'folded' && p.status !== 'sitout')
   const updatedPlayers = state.players.map(p => ({ ...p, currentStreetBet: 0 }))
   const newPots = calculateSidePots(
     state.players.map(p => ({
@@ -242,8 +259,10 @@ function advanceStreet(state: HandState): HandState {
   let newBoard = [...state.board]
 
   if (newStreet === 'flop') {
+    newDeck.shift() // burn card
     newBoard = [...newBoard, ...newDeck.splice(0, 3)]
   } else if (newStreet === 'turn' || newStreet === 'river') {
+    newDeck.shift() // burn card
     const card = newDeck.shift()
     if (card) newBoard = [...newBoard, card]
   }
@@ -276,6 +295,9 @@ function advanceStreet(state: HandState): HandState {
   }
 
   const newCurrentIdx = findFirstActiveAfterDealer(updatedPlayers, state.dealerSeat)
+  const newPlayersToAct = updatedPlayers
+    .filter(p => p.status === 'active')
+    .map(p => p.playerId)
   return {
     ...state,
     players: updatedPlayers,
@@ -284,6 +306,7 @@ function advanceStreet(state: HandState): HandState {
     board: newBoard,
     deck: newDeck,
     currentPlayerIndex: newCurrentIdx,
+    playersToAct: newPlayersToAct,
     lastRaiserIndex: -1,
     lastRaiseAmount: 0,
     minRaise: state.bigBlind,
@@ -292,10 +315,12 @@ function advanceStreet(state: HandState): HandState {
 }
 
 function findFirstActiveAfterDealer(players: PlayerHandState[], dealerSeat: number): number {
-  const n = players.length
+  const sorted = [...players].map((p, origIdx) => ({ ...p, origIdx })).sort((a, b) => a.seatIndex - b.seatIndex)
+  const dealerPos = sorted.findIndex(p => p.seatIndex === dealerSeat)
+  const n = sorted.length
   for (let i = 1; i <= n; i++) {
-    const idx = players.findIndex(p => p.seatIndex === (dealerSeat + i) % 9)
-    if (idx >= 0 && players[idx]!.status === 'active') return idx
+    const p = sorted[(dealerPos + i) % n]!
+    if (p.status === 'active') return p.origIdx
   }
   return players.findIndex(p => p.status === 'active')
 }
@@ -320,8 +345,10 @@ export function createHandState(
   const seatedPlayers = [...players].sort((a, b) => a.seatIndex - b.seatIndex)
   const n = seatedPlayers.length
   const dealerIdx = seatedPlayers.findIndex(p => p.seatIndex === dealerSeat)
-  const sbIdx = (dealerIdx + 1) % n
-  const bbIdx = (dealerIdx + 2) % n
+
+  // Heads-up (2 players): Dealer = SB, non-dealer = BB; Dealer/SB acts first pre-flop
+  const sbIdx = n === 2 ? dealerIdx : (dealerIdx + 1) % n
+  const bbIdx = n === 2 ? (dealerIdx + 1) % n : (dealerIdx + 2) % n
   const sbPlayer = seatedPlayers[sbIdx]!
   const bbPlayer = seatedPlayers[bbIdx]!
 
@@ -354,7 +381,8 @@ export function createHandState(
     if (c1 && c2) p.holeCards = [c1, c2]
   }
 
-  const firstToAct = (bbIdx + 1) % n
+  // Heads-up: SB (= dealer) acts first pre-flop; otherwise UTG (seat after BB)
+  const firstToAct = n === 2 ? sbIdx : (bbIdx + 1) % n
 
   return {
     handNumber,
@@ -366,6 +394,7 @@ export function createHandState(
     sbSeat: sbPlayer.seatIndex,
     bbSeat: bbPlayer.seatIndex,
     currentPlayerIndex: firstToAct,
+    playersToAct: handPlayers.filter(p => p.status === 'active').map(p => p.playerId),
     lastRaiserIndex: bbIdx,
     lastRaiseAmount: bigBlind,
     minRaise: bigBlind,
